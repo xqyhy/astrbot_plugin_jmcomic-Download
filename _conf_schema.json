@@ -28,5 +28,35 @@
     "type": "int",
     "default": 5,
     "hint": "建议设置为 3~10，仅在 rate_limit_enabled 为 true 时生效"
+  },
+  "push_enabled": {
+    "description": "是否开启每日定时推送本子（默认关闭）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后每天在 push_cron 设定的时间自动推送本子到 push_group_ids 群"
+  },
+  "push_cron": {
+    "description": "定时推送时间（24小时制 HH:MM）",
+    "type": "string",
+    "default": "20:00",
+    "hint": "例如 20:00 表示每天晚上8点推送，仅在 push_enabled 为 true 时生效"
+  },
+  "push_keywords": {
+    "description": "推送搜索关键词列表（为空时使用随机关键词）",
+    "type": "list",
+    "default": [],
+    "hint": "例如 [\"全彩\", \"汉化\", \"单行本\"]，随机选一个作为当日推送内容"
+  },
+  "push_group_ids": {
+    "description": "推送目标群号列表（必填，否则不会推送）",
+    "type": "list",
+    "default": [],
+    "hint": "例如 [123456789, 987654321]，仅在 push_enabled 为 true 时生效"
+  },
+  "push_random_fallback": {
+    "description": "当 push_keywords 为空时是否使用随机内置关键词",
+    "type": "bool",
+    "default": true,
+    "hint": "内置关键词: 全彩、汉化、单行本、新作、热门"
   }
 }

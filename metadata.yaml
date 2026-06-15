@@ -1,6 +1,6 @@
 name: astrbot_plugin_jmcomic-Download
 description: 基于 JMComic-Crawler-Python API 的禁漫天堂本子下载/查询/搜索插件
 author: 小七月
-version: "1.0"
+version: "2.1"
 license: MIT
 repo: https://github.com/hect0x7/JMComic-Crawler-Python
