@@ -1,0 +1,20 @@
+{
+  "download_dir": {
+    "description": "本子下载保存目录路径（留空则使用插件数据目录下的 downloads 文件夹）",
+    "type": "string",
+    "default": "/data/jm_downloads",
+    "hint": "例如: /data/jm_downloads"
+  },
+  "auto_clean_enabled": {
+    "description": "是否开启自动清理下载目录中的旧压缩包（默认关闭）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后每天凌晨3点自动清理超过保留天数的文件"
+  },
+  "auto_clean_days": {
+    "description": "文件保留天数（超过此天数的压缩包将被自动清理）",
+    "type": "int",
+    "default": 7,
+    "hint": "建议设置为 3~30 天，仅在 auto_clean_enabled 为 true 时生效"
+  }
+}
