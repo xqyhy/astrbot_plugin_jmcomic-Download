@@ -2,19 +2,31 @@
   "download_dir": {
     "description": "本子下载保存目录路径（留空则使用插件数据目录下的 downloads 文件夹）",
     "type": "string",
-    "default": "/data/jm_downloads",
+    "default": "",
     "hint": "例如: /data/jm_downloads"
   },
   "auto_clean_enabled": {
     "description": "是否开启自动清理下载目录中的旧压缩包（默认关闭）",
     "type": "bool",
     "default": false,
-    "hint": "开启后每天凌晨3点自动清理超过保留天数的文件"
+    "hint": "开启后每小时检查并自动清理超过保留天数的文件"
   },
   "auto_clean_days": {
     "description": "文件保留天数（超过此天数的压缩包将被自动清理）",
     "type": "int",
     "default": 7,
     "hint": "建议设置为 3~30 天，仅在 auto_clean_enabled 为 true 时生效"
+  },
+  "rate_limit_enabled": {
+    "description": "是否开启1分钟使用次数限制",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后每个用户每分钟最多调用 MAX_CALLS_PER_MINUTE 次"
+  },
+  "rate_limit_max_calls": {
+    "description": "每分钟最大调用次数",
+    "type": "int",
+    "default": 5,
+    "hint": "建议设置为 3~10，仅在 rate_limit_enabled 为 true 时生效"
   }
 }
