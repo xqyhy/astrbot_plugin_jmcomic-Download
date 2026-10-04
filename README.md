@@ -1,4 +1,4 @@
-# 🦊 astrbot_plugin_jmcomic-Download
+版本：2.5
 
 基于 [JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python) API 的 AstrBot 插件。
 提供禁漫天堂本子的查询、下载、搜索功能。
@@ -38,7 +38,7 @@ pip install pyzipper
 | 配置项 | 类型 | 默认值 | 说明 |
 |:---|:---:|:---|:---|
 | `download_dir` | string | 插件数据目录/downloads | 本子下载保存路径 |
-| `auto_clean_enabled` | bool | false | 是否开启自动清理旧压缩包 |
+| `auto_clean_enabled` | bool | false | 是否开启自动清理旧 ZIP、PNG 和 JM 散图目录 |
 | `auto_clean_days` | int | 7 | 文件保留天数 |
 | `rate_limit_enabled` | bool | true | 是否开启1分钟使用次数限制 |
 | `rate_limit_max_calls` | int | 5 | 每分钟最大调用次数 |
@@ -69,5 +69,6 @@ pip install pyzipper
 
 ## 🔗 相关链接
 
+- [插件仓库](https://github.com/xqyhy/astrbot_plugin_jmcomic-Download)
 - [JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
 - [jmcomic 文档](https://jmcomic.readthedocs.io/zh-cn/latest)

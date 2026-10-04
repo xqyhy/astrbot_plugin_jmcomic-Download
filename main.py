@@ -33,8 +33,8 @@ except ImportError:
     HAS_PYZIPPER = False
     logger.warning("⚠️ 未安装 pyzipper，将使用无加密 ZIP 压缩（不推荐）。建议运行: pip install pyzipper")
 
-# 1分钟最多使用次数
-MAX_CALLS_PER_MINUTE = 5
+# 默认每分钟最多使用次数
+DEFAULT_MAX_CALLS_PER_MINUTE = 5
 DEFAULT_RANDOM_KEYWORDS = ["全彩", "汉化", "单行本", "新作", "热门"]
 
 
@@ -60,14 +60,16 @@ class JMComicPlugin(Star):
     _rate_lock: threading.Lock
 
     def _check_rate_limit(self, user_id: str) -> Optional[str]:
+        if not self._rate_limit_enabled:
+            return None
         now = time.time()
         cutoff = now - 60
         with self._rate_lock:
             records = self._rate_limit.get(user_id, [])
             records = [t for t in records if t > cutoff]
-            if len(records) >= MAX_CALLS_PER_MINUTE:
-                wait_seconds = int(records[0] + 60 - now)
-                return f"⏳ 调用太频繁啦！1分钟内只能使用 {MAX_CALLS_PER_MINUTE} 次哦～\n请 {wait_seconds} 秒后再试 (´・ω・`)"
+            if len(records) >= self._rate_limit_max_calls:
+                wait_seconds = max(1, int(records[0] + 60 - now))
+                return f"⏳ 调用太频繁啦！1分钟内只能使用 {self._rate_limit_max_calls} 次哦～\n请 {wait_seconds} 秒后再试 (´・ω・`)"
             records.append(now)
             self._rate_limit[user_id] = records
         return None
@@ -82,12 +84,14 @@ class JMComicPlugin(Star):
         os.makedirs(self.download_dir, exist_ok=True)
 
         self._rate_lock = threading.Lock()
+        self._rate_limit_enabled = bool(self.config.get("rate_limit_enabled", True))
+        self._rate_limit_max_calls = max(1, int(self.config.get("rate_limit_max_calls", DEFAULT_MAX_CALLS_PER_MINUTE)))
         self._clean_enabled = bool(self.config.get("auto_clean_enabled", False))
-        self._clean_days = int(self.config.get("auto_clean_days", 7))
+        self._clean_days = max(1, int(self.config.get("auto_clean_days", 7)))
         self._clean_thread = None
         if self._clean_enabled:
             self._start_cleaner()
-            logger.info(f"🧹 自动清理已开启: 每隔1小时检查, 删除超过{self._clean_days}天的.zip文件")
+            logger.info(f"🧹 自动清理已开启: 每隔1小时检查, 删除超过{self._clean_days}天的下载文件")
 
         # 推送配置
         self.push_enabled = bool(self.config.get("push_enabled", False))
@@ -117,22 +121,29 @@ class JMComicPlugin(Star):
     def _clean_old_files(self):
         if not os.path.isdir(self.download_dir):
             return
-        now = datetime.now()
-        cutoff = now - timedelta(days=self._clean_days)
+        cutoff = time.time() - self._clean_days * 86400
         cleaned = 0
-        for fname in os.listdir(self.download_dir):
-            if not fname.endswith(".zip"):
-                continue
-            fpath = os.path.join(self.download_dir, fname)
-            if not os.path.isfile(fpath):
-                continue
-            mtime = datetime.fromtimestamp(os.path.getmtime(fpath))
-            if mtime < cutoff:
-                os.remove(fpath)
-                cleaned += 1
-                logger.info(f"🧹 已清理过期压缩包: {fname}")
+        for name in os.listdir(self.download_dir):
+            path = os.path.join(self.download_dir, name)
+            try:
+                if os.path.isfile(path):
+                    if not name.lower().endswith((".zip", ".png")):
+                        continue
+                    if os.path.getmtime(path) >= cutoff:
+                        continue
+                    os.remove(path)
+                    cleaned += 1
+                    logger.info(f"🧹 已清理过期下载文件: {name}")
+                elif os.path.isdir(path) and (name.startswith("JM") or name.isdigit()):
+                    if os.path.getmtime(path) >= cutoff:
+                        continue
+                    shutil.rmtree(path)
+                    cleaned += 1
+                    logger.info(f"🧹 已清理过期散图目录: {name}")
+            except OSError as e:
+                logger.warning(f"🧹 清理失败 {path}: {e}")
         if cleaned > 0:
-            logger.info(f"🧹 本次清理完成, 共删除 {cleaned} 个过期压缩包")
+            logger.info(f"🧹 本次清理完成, 共删除 {cleaned} 个过期项目")
 
     def _build_base_option(self):
         yaml_config = f"""
@@ -378,12 +389,30 @@ client:
             album, dler = jmcomic.download_album(album_id, option, extra=Feature.export_long_img)
 
             album_title = getattr(album, 'title', album_id)
-            safe_title = re.sub(r'[\\/*?:"<>|]', '', album_title)
+            safe_title = re.sub(r'[\\/*?:"<>|]', '_', album_title)
             long_img_name = f"[JM{album_id}]{safe_title}.png"
             long_img_path = os.path.join(self.download_dir, long_img_name)
 
-            if not os.path.exists(long_img_path):
-                raise Exception("长图生成失败，请检查 jmcomic 版本及 Pillow 库")
+            if not os.path.isfile(long_img_path) or os.path.getsize(long_img_path) == 0:
+                album_dir = os.path.join(self.download_dir, f"JM{album_id}")
+                title_dir = os.path.join(self.download_dir, album_title)
+                found_files = []
+                for candidate_dir in (album_dir, title_dir):
+                    if os.path.isdir(candidate_dir):
+                        for root, _, files in os.walk(candidate_dir):
+                            found_files.extend(
+                                os.path.relpath(os.path.join(root, name), self.download_dir)
+                                for name in files[:200]
+                            )
+                logger.error(
+                    "JM 长图未生成或为空: album_id=%s expected=%s album_dir=%s title_dir=%s files=%s",
+                    album_id,
+                    long_img_path,
+                    album_dir,
+                    title_dir,
+                    found_files[:200],
+                )
+                raise Exception("长图生成失败，请检查日志中的 JM 导出文件清单")
 
             # 打包长图为加密 ZIP
             zip_path = os.path.join(self.download_dir, f"{album_id}.zip")
@@ -427,7 +456,7 @@ client:
             ])
 
         except Exception as e:
-            logger.error(f"下载本子失败: {e}")
+            logger.error(f"下载本子失败: {e}", exc_info=True)
             yield event.plain_result(f"❌ 下载失败: {str(e)[:200]}")
 
     async def _handle_search(self, event: AstrMessageEvent, keyword: str):
